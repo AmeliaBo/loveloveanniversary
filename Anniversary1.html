@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rayramisu的一周年考核 🎀</title>
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #ffafbd 0%, #ffc3a0 100%);
+            --glass: rgba(255, 255, 255, 0.35);
+            --my-msg: #ffffff;
+            --text-color: #9e4a44;
+            --accent: #ff7878;
+        }
+
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg-gradient); font-family: 'PingFang SC', sans-serif; }
+
+        /* 背景飘动爱心 */
+        .heart { position: absolute; color: rgba(255, 255, 255, 0.4); animation: float 6s infinite ease-in; z-index: 0; pointer-events: none; }
+        @keyframes float { from { transform: translateY(0) rotate(0deg); opacity: 1; } to { transform: translateY(-100vh) rotate(360deg); opacity: 0; } }
+
+        #container {
+            position: relative; z-index: 1; width: 90%; max-width: 450px; height: 85vh;
+            background: var(--glass); backdrop-filter: blur(20px); border-radius: 35px;
+            margin: 5vh auto; display: flex; flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.4);
+        }
+
+        #messages { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
+        .bubble { max-width: 85%; padding: 14px 18px; border-radius: 22px; font-size: 15px; line-height: 1.6; animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes pop { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        
+        .me { align-self: flex-start; background: var(--my-msg); color: var(--text-color); border-bottom-left-radius: 2px; }
+        .bf { align-self: flex-end; background: var(--accent); color: white; border-bottom-right-radius: 2px; }
+
+        #controls { padding: 20px; background: rgba(255,255,255,0.15); border-top: 1px solid rgba(255,255,255,0.2); }
+        .btn { width: 100%; background: white; border: none; color: var(--accent); padding: 12px; border-radius: 18px; margin-bottom: 10px; cursor: pointer; transition: 0.3s; font-size: 14px; font-weight: bold; }
+        .btn:hover { background: var(--accent); color: white; }
+        
+        .input-box { display: none; gap: 10px; }
+        input { flex: 1; border: none; border-radius: 25px; padding: 12px 20px; background: white; outline: none; color: var(--text-color); }
+        .send { background: var(--accent); color: white; border: none; padding: 0 25px; border-radius: 25px; cursor: pointer; font-weight: bold; }
+
+        /* 报告区域样式 */
+        .report-card { background: white; border-radius: 15px; padding: 15px; margin-top: 10px; color: #d81b60; font-size: 13px; text-align: left; border: 2px dashed #ffafbd; }
+        .copy-btn { background: #ff7878; color: white; border: none; width: 100%; padding: 10px; border-radius: 10px; margin-top: 10px; cursor: pointer; font-weight: bold; }
+
+        a { color: #ff4757; text-decoration: none; border-bottom: 2px solid #ff4757; }
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <div id="messages"></div>
+    <div id="controls">
+        <div id="options"></div>
+        <div id="input-ui" class="input-box">
+            <input type="text" id="text-in" placeholder="在这里写情书呀...">
+            <button class="send" onclick="sendText()">发送</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const box = document.getElementById('messages');
+    const opts = document.getElementById('options');
+    const inUI = document.getElementById('input-ui');
+    const textIn = document.getElementById('text-in');
+
+    // 用于存储他的回答
+    let userAnswers = [];
+
+    const script = [
+        { 
+            q: "第一关 ✨：在过去的一年里，你觉得女朋友最可爱的瞬间是？", 
+            type: "choice",
+            options: ["A. 努力干饭的时候", "B. 睡得像小猪的时候", "C. 撒娇要亲亲的时候", "D. 以上全部，不许选错！"],
+            correct: "D. 以上全部，不许选错！",
+            wrongMsg: "哼，不够全面哦！不过看在你态度还算诚诚恳的份上，算你逃过一劫，下一题要认真咯~ 😜"
+        },
+        { 
+            type: "choice",
+            q: "第二关 🧩：当我说‘我没生气’的时候，你应该怎么做呢？", 
+            options: ["A. 真的相信她没生气", "B. 立刻滑跪，反思自己", "C. 是人都有情绪，转头就走", "D. 先安抚情绪+提供美食并紧紧抱住+事后沟通"],
+            correct: "D. 先安抚情绪+提供美食并紧紧抱住+事后沟通",
+            wrongMsg: "啧啧，这求生欲不行呀！再给你一次机会好好想想，答不对不许走！🙄"
+        },
+        { 
+            type: "choice",
+            q: "第三关 💋：记忆力大考验！我们第一次接吻的地点是在哪里呀？", 
+            options: ["A. 电影院", "B. 宿舍门口的小路上", "C. 餐厅门口", "D. 操场上"],
+            correct: "B. 宿舍门口的小路上",
+            wrongMsg: "Oh no！居然记错了？请立刻联系问卷主人进行实时核查（并准备好受罚吧！）😡"
+        },
+        { 
+            type: "choice",
+            q: "第四关 ✈️：如果我们可以瞬间移动，你觉得我会带你去哪？", 
+            options: ["A. 海边看落日", "B. 雪山滑雪", "C. 逛吃逛吃的闹市", "D. 躲在酒店里点外卖"],
+            correct: "ANYTHING",
+            r: "好呀好呀～只要是和你一起，去哪里我都愿意～☁️" 
+        },
+        { type: "text", q: "第五关 📝：快用三个词形容一下你眼中的我？", r: "嘿嘿，我在你心里原来这么棒呀，害羞羞~ ❤️" },
+        { type: "text", q: "第六关 📅：这一年里，你印象最深的一次约会是哪次？", r: "那一天我也记了好久好久，你是全世界最懂浪漫的男孩子！" },
+        { type: "text", q: "第七关 🚀：接下来的这一年，你最想和我一起完成什么事？", r: "已经截图保存啦！拉钩，我们要一起去实现它！" },
+        { type: "text", q: "最终关 💌：想对一年前刚和我在一起的自己说一句话吗？", r: "一周年快乐，我的笨蛋男孩。谢谢你这一年的宠爱，我也超级超级爱你！🏆" }
+    ];
+
+    let step = 0;
+
+    function print(txt, type) {
+        const d = document.createElement('div');
+        d.className = `bubble ${type}`;
+        d.innerHTML = txt;
+        box.appendChild(d);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function ask() {
+        if (step >= script.length) {
+            finish();
+            return;
+        }
+        const s = script[step];
+        setTimeout(() => print(s.q, 'me'), 500);
+
+        if (s.type === 'choice') {
+            opts.innerHTML = '';
+            inUI.style.display = 'none';
+            opts.style.display = 'block';
+            s.options.forEach(o => {
+                const b = document.createElement('button');
+                b.className = 'btn';
+                b.innerText = o;
+                b.onclick = () => check(o);
+                opts.appendChild(b);
+            });
+        } else {
+            opts.style.display = 'none';
+            inUI.style.display = 'flex';
+        }
+    }
+
+    function check(choice) {
+        print(choice, 'bf');
+        userAnswers.push(`Q${step+1}: ${choice}`); // 记录选项
+        const s = script[step];
+        
+        if (step === 3) {
+            setTimeout(() => {
+                print(s.r, 'me');
+                step++;
+                setTimeout(ask, 1000);
+            }, 800);
+            return;
+        }
+
+        if (step === 1 && choice !== s.correct) {
+            userAnswers.pop(); // 回答错误不记录
+            setTimeout(() => print(s.wrongMsg, 'me'), 800);
+            return;
+        }
+
+        setTimeout(() => {
+            if (choice !== s.correct) print(s.wrongMsg, 'me');
+            else print("这就是我的完美男友吗？完全正确～下一题~ ✨", 'me');
+            step++;
+            setTimeout(ask, 1200);
+        }, 800);
+    }
+
+    function sendText() {
+        const v = textIn.value.trim();
+        if(!v) return;
+        print(v, 'bf');
+        userAnswers.push(`Q${step+1}: ${v}`); // 记录填空
+        textIn.value = '';
+        inUI.style.display = 'none';
+        setTimeout(() => {
+            print(script[step].r, 'me');
+            step++;
+            setTimeout(ask, 1000);
+        }, 800);
+    }
+
+    function finish() {
+        print("🎉 恭喜通关！现在的你正式蝉联【年度最佳男友】桂冠！", 'me');
+        setTimeout(() => {
+            print("🎁 呐，这是给你的特别奖励：<br><br><a href='https://youtu.be/BpBNRwmR4Hg'>✨ 点击领取专属哄睡视频 ✨</a>如果听着听着睡着了，记得梦里也要有我。💤", 'me');
+            
+            // 生成报告区域
+            const reportDiv = document.createElement('div');
+            reportDiv.className = 'report-card';
+            const reportText = `💖 我们的周年爱情报告 💖\n\n${userAnswers.join('\n')}\n\n—— 考核结果：特优(AAA+) ——`;
+            reportDiv.innerText = reportText;
+            box.appendChild(reportDiv);
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-btn';
+            copyBtn.innerText = '点击复制语录，去领赏吧！';
+            copyBtn.onclick = () => {
+                navigator.clipboard.writeText(reportText);
+                copyBtn.innerText = '✅ 已复制！快发给我呀！';
+                copyBtn.style.background = '#4CAF50';
+            };
+            box.appendChild(copyBtn);
+            
+            print("🧚 小精灵：点上方按钮复制你的语录，发给女朋友兑换一周年亲亲喔！", 'me');
+            box.scrollTop = box.scrollHeight;
+        }, 1500);
+    }
+
+    // 飘爱心
+    setInterval(() => {
+        const h = document.createElement('div');
+        h.className = 'heart';
+        h.innerHTML = '💗';
+        h.style.left = Math.random() * 100 + '%';
+        h.style.fontSize = Math.random() * 20 + 10 + 'px';
+        h.style.bottom = '-20px';
+        document.body.appendChild(h);
+        setTimeout(() => h.remove(), 6000);
+    }, 1000);
+
+    ask();
+</script>
+
+</body>
+</html>
